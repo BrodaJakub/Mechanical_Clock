@@ -1,4 +1,4 @@
-﻿/*
+/*
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License...
 */
@@ -121,45 +121,60 @@ void drawGear(glm::mat4 Mt) {
 
 // Rysowanie zegara
 void drawClock(float time) {
-    glm::mat4 Mk1 = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
-    Mk1 = glm::rotate(Mk1, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 base = glm::rotate(glm::mat4(1.0f), PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));
+
+    // Korpus
+    glm::mat4 Mk1 = glm::scale(base, glm::vec3(1.0f));
     glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(Mk1));
     glUniform4f(spLambert->u("color"), 1, 0, 1, 1);
     Models::grannyClock.drawSolid();
 
-    glm::mat4 Mk2 = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
-    Mk2 = glm::rotate(Mk2, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
-    glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(Mk2));
+    // Tarcza
     glUniform4f(spLambert->u("color"), 1, 1, 1, 1);
     Models::grannyClockFace.drawSolid();
 
+    // WSKAZÓWKI – obroty wokół osi Z względem środka tarczy (na bazie macierzy bazowej)
+
+   // Duża wskazówka (minutowa) – pełny obrót co 60s
+    float bigHandAngle = glm::radians((fmod(time, 60.0f) / 60.0f) * 360.0f);
     glm::mat4 Mk3 = glm::mat4(1.0f);
-    Mk3 = glm::rotate(Mk3, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
-    Mk3 = glm::translate(Mk3, glm::vec3(-0.40f, 3.20f, 0.0f)); //(przod/tyl,gora/dol,prawo/lewo)
+    Mk3 = glm::translate(Mk3, glm::vec3(0.0f, 3.1f, 0.4f));  // Ustalenie punktu zaczepienia
+    Mk3 = glm::rotate(Mk3, -bigHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+    Mk3 = glm::rotate(Mk3, PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));  // obrót w stronę widoku
     glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(Mk3));
     glUniform4f(spLambert->u("color"), 1, 0.5, 0.5, 1);
     Models::grannyClockHand.drawSolid();
 
+    // Mała wskazówka (godzinowa) – pełny obrót co 3600s
+    float smallHandAngle = glm::radians((fmod(time, 3600.0f) / 3600.0f) * 360.0f);
     glm::mat4 Mk4 = glm::mat4(1.0f);
-    Mk4 = glm::rotate(Mk4, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
-    Mk4 = glm::translate(Mk4, glm::vec3(-0.45f, 3.20f, 0.0f));
+    Mk4 = glm::translate(Mk4, glm::vec3(0.0f, 3.1f, 0.45f));
+    Mk4 = glm::rotate(Mk4, -smallHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+    Mk4 = glm::rotate(Mk4, PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));
     Mk4 = glm::scale(Mk4, glm::vec3(0.7f));
     glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(Mk4));
     glUniform4f(spLambert->u("color"), 0.5, 0.5, 0.5, 1);
     Models::grannyClockHand.drawSolid();
 
-    glm::mat4 Mk5 = glm::mat4(1.0f);
-    Mk5 = glm::rotate(Mk5, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
-    Mk5 = glm::translate(Mk5, glm::vec3(-0.1f, 0.1f, 0.0f));
-    glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(Mk5));
+    // WAHADŁO – bujanie LEWO↔PRAWO sinusoidą co sekundę
+    float pendulumAngle = sin(time * PI) * glm::radians(20.0f); // 20° w lewo/prawo
+    glm::mat4 pendulum = base;
+    pendulum = glm::translate(pendulum, glm::vec3(-0.1f, 0.1f, 0.0f));
+    pendulum = glm::rotate(pendulum, pendulumAngle, glm::vec3(1.0f, 0.0f, 0.0f));  // obrót wokół osi X
+    glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(pendulum));
     glUniform4f(spLambert->u("color"), 0.2, 0.7, 1, 1);
     Models::pendulum.drawSolid();
 }
 
 
+
+
+
+
 // Zębatki 2
 void gears2(float angle) {
     glm::mat4 I = glm::mat4(1.0f);
+
 
     glm::mat4 Mt1 = glm::translate(I, glm::vec3(-0.1575f, -0.1f, -0.05f));
     Mt1 = glm::rotate(Mt1, angle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -181,8 +196,8 @@ void drawScene(GLFWwindow* window, float angle) {
     glUniformMatrix4fv(spLambert->u("P"), 1, false, glm::value_ptr(P));
     glUniformMatrix4fv(spLambert->u("V"), 1, false, glm::value_ptr(V));
 
-    drawClock(0);
-    gears2(angle);
+    drawClock(glfwGetTime());
+    gears2(glfwGetTime() * PI * 0.2f);
 
     glfwSwapBuffers(window);
 }
