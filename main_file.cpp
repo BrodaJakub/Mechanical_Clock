@@ -120,7 +120,15 @@ void drawGear(glm::mat4 Mt) {
 }
 
 // Rysowanie zegara
-void drawClock(float time) {
+void drawClock(float angle) {
+    // Załóżmy, że wskazówka minutowa przesuwa się o 1 obrót co 10 obrotów zębatki:
+    float gearToMinuteHandRatio = 1.0f / 10.0f;
+    float bigHandAngle = angle * gearToMinuteHandRatio;
+
+    // A wskazówka godzinowa jeszcze wolniej
+    float gearToHourHandRatio = 1.0f / 600.0f;
+    float smallHandAngle = angle * gearToHourHandRatio;
+
     glm::mat4 base = glm::rotate(glm::mat4(1.0f), PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Korpus
@@ -136,7 +144,6 @@ void drawClock(float time) {
     // WSKAZÓWKI – obroty wokół osi Z względem środka tarczy (na bazie macierzy bazowej)
 
    // Duża wskazówka (minutowa) – pełny obrót co 60s
-    float bigHandAngle = glm::radians((fmod(time, 60.0f) / 60.0f) * 360.0f);
     glm::mat4 Mk3 = glm::mat4(1.0f);
     Mk3 = glm::translate(Mk3, glm::vec3(0.0f, 3.1f, 0.4f));  // Ustalenie punktu zaczepienia
     Mk3 = glm::rotate(Mk3, -bigHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -146,7 +153,6 @@ void drawClock(float time) {
     Models::grannyClockHand.drawSolid();
 
     // Mała wskazówka (godzinowa) – pełny obrót co 3600s
-    float smallHandAngle = glm::radians((fmod(time, 3600.0f) / 3600.0f) * 360.0f);
     glm::mat4 Mk4 = glm::mat4(1.0f);
     Mk4 = glm::translate(Mk4, glm::vec3(0.0f, 3.1f, 0.45f));
     Mk4 = glm::rotate(Mk4, -smallHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -157,7 +163,7 @@ void drawClock(float time) {
     Models::grannyClockHand.drawSolid();
 
     // WAHADŁO – bujanie LEWO↔PRAWO sinusoidą co sekundę
-    float pendulumAngle = sin(time * PI) * glm::radians(20.0f); // 20° w lewo/prawo
+    float pendulumAngle = sin(glfwGetTime() * PI) * glm::radians(20.0f); // 20° w lewo/prawo
     glm::mat4 pendulum = base;
     pendulum = glm::translate(pendulum, glm::vec3(-0.1f, 0.1f, 0.0f));
     pendulum = glm::rotate(pendulum, pendulumAngle, glm::vec3(1.0f, 0.0f, 0.0f));  // obrót wokół osi X
@@ -196,8 +202,8 @@ void drawScene(GLFWwindow* window, float angle) {
     glUniformMatrix4fv(spLambert->u("P"), 1, false, glm::value_ptr(P));
     glUniformMatrix4fv(spLambert->u("V"), 1, false, glm::value_ptr(V));
 
-    drawClock(glfwGetTime());
-    gears2(glfwGetTime() * PI * 0.2f);
+    drawClock(angle);
+    gears2(angle);
 
     glfwSwapBuffers(window);
 }
