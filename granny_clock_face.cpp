@@ -1,4 +1,4 @@
-#include "granny_clock.h"
+#include "granny_clock_face.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -10,9 +10,9 @@
 
 namespace Models {
 
-    GrannyClock grannyClock("granny_clock_new.obj");
+    GrannyClockFace grannyClockFace("granny_clock_face.obj");
 
-    GrannyClock::GrannyClock(const std::string& filename) {
+    GrannyClockFace::GrannyClockFace(const std::string& filename) {
         std::vector<glm::vec4> temp_vertices;
         std::vector<glm::vec3> temp_normals;
         std::vector<glm::vec2> temp_texCoords;
@@ -106,7 +106,7 @@ namespace Models {
         }
     }
 
-    GrannyClock::~GrannyClock() {
+    GrannyClockFace::~GrannyClockFace() {
         delete[] vertices;
         delete[] normals;
         delete[] vertexNormals;
@@ -114,7 +114,7 @@ namespace Models {
         delete[] colors;
     }
 
-    void GrannyClock::drawSolid(bool smooth) {
+    void GrannyClockFace::drawSolid(bool smooth) {
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glEnableVertexAttribArray(2);

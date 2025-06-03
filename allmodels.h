@@ -22,5 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "torus.h"
 #include "gearwheel.h"
 #include "granny_clock.h"
+#include "granny_clock_face.h"
+#include "granny_clock_hand.h"
+#include "pendulum.h"
 
 #endif
