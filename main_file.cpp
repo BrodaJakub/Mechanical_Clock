@@ -199,17 +199,11 @@ void drawClock(float angle, glm::mat4 P, glm::mat4 V) {
 
     Models::grannyClockFace.drawSolid();
 
-// HAND1
-    glm::mat4 Mk3 = glm::mat4(1.0f);
-    Mk3 = glm::rotate(Mk3, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
-    Mk3 = glm::translate(Mk3, glm::vec3(-0.40f, 3.20f, 0.0f)); //(przod/tyl,gora/dol,prawo/lewo)
-
-//HAND2
     // WSKAZÓWKI – obroty wokół osi Z względem środka tarczy (na bazie macierzy bazowej)
 
    // Duża wskazówka (minutowa) – pełny obrót co 60s
     glm::mat4 Mk3 = glm::mat4(1.0f);
-    Mk3 = glm::translate(Mk3, glm::vec3(0.0f, 3.1f, 0.4f));  // Ustalenie punktu zaczepienia
+    Mk3 = glm::translate(Mk3, glm::vec3(0.0f, 3.1f, 0.4f));  // Ustalenie punktu zaczepienia (przod/tyl,gora/dol,prawo/lewo)
     Mk3 = glm::rotate(Mk3, -bigHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
     Mk3 = glm::rotate(Mk3, PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));  // obrót w stronę widoku
     glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk3));
@@ -276,8 +270,8 @@ void drawScene(GLFWwindow* window, float angle) {
     glm::mat4 V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
 
-    drawClock(angle,P,V);
-    gears2(angle,P,V);
+    drawClock(glfwGetTime(),P,V);
+    gears2(glfwGetTime() * PI * 0.2f,P,V);
 
     glfwSwapBuffers(window);
 }
