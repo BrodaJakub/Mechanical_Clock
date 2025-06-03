@@ -11,6 +11,7 @@ g++ -g \
   /home/jakub/Pobrane/Mechanical_Clock/granny_clock_face.cpp \
   /home/jakub/Pobrane/Mechanical_Clock/granny_clock_hand.cpp \
   /home/jakub/Pobrane/Mechanical_Clock/pendulum.cpp \
+  /home/jakub/Pobrane/Mechanical_Clock/lodepng.cpp \
   -o /home/jakub/Pobrane/Mechanical_Clock/main_file \
   -lGL -lGLEW -lglfw
 ./main_file
