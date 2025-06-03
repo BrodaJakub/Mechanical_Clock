@@ -94,8 +94,8 @@ namespace Models {
                 vertexNormals[i * 4 + j] = (j < 3) ? n[j] : 0.0f;
             }
 
-            texCoords[i * 4 + 0] = 0.0f;
-            texCoords[i * 4 + 1] = 0.0f;
+            texCoords[i * 4 + 0] = t.x;
+            texCoords[i * 4 + 1] = t.y;
             texCoords[i * 4 + 2] = 0.0f;
             texCoords[i * 4 + 3] = 0.0f;
 

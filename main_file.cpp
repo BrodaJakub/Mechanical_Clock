@@ -12,6 +12,7 @@ it under the terms of the GNU General Public License...
 #include <glm/gtc/matrix_transform.hpp>
 #include <stdlib.h>
 #include <stdio.h>
+#include <iostream>
 #include "constants.h"
 #include "allmodels.h"
 #include "lodepng.h"
@@ -20,6 +21,10 @@ it under the terms of the GNU General Public License...
 #include "granny_clock.h"  // Dodane
 
 float speed = 0;
+GLuint texClockHouse;
+GLuint texClockHand;
+GLuint texClockFace;
+GLuint texPendulum;
 
 // Kamera
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 15.0f);
@@ -96,6 +101,29 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
+GLuint readTexture(const char* filename) {
+    GLuint tex;
+    glActiveTexture(GL_TEXTURE0);
+
+    std::vector<unsigned char> image;
+    unsigned width, height;
+    unsigned error = lodepng::decode(image, width, height, filename);
+    if (error) {
+        std::cerr << "Texture loading error: " << lodepng_error_text(error) << std::endl;
+        return 0;
+    }
+
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, 4, width, height, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, image.data());
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    return tex;
+}
+
 // Inicjalizacja
 void initOpenGLProgram(GLFWwindow* window) {
     initShaders();
@@ -104,23 +132,34 @@ void initOpenGLProgram(GLFWwindow* window) {
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    texClockHouse = readTexture("clock_house.png");
+    texClockHand = readTexture("clock_hand.png");
+    texClockFace = readTexture("clock_face.png");
+    texPendulum = readTexture("pendulum.png");
 }
 
 // Zwolnienie zasobów
 void freeOpenGLProgram(GLFWwindow* window) {
     freeShaders();
+    glDeleteTextures(1, &texClockHouse);
+    
 }
 
 // Rysowanie zębatki
-void drawGear(glm::mat4 Mt) {
+void drawGear(glm::mat4 Mt, glm::mat4 P, glm::mat4 V) {
+    spLambert->use();
+    glUniformMatrix4fv(spLambert->u("P"), 1, false, glm::value_ptr(P));
+    glUniformMatrix4fv(spLambert->u("V"), 1, false, glm::value_ptr(V));
+
     Mt = glm::scale(Mt, glm::vec3(0.0075f, 0.0075f, 0.0075f));
     glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(Mt));
-    glUniform4f(spLambert->u("color"), 1, 1, 0, 1);
+    glUniform4f(spLambert->u("color"), 0.5f, 0.5f, 0.5f, 1);
     Models::gearwheel.drawSolid();
 }
 
 // Rysowanie zegara
-void drawClock(float angle) {
+void drawClock(float angle, glm::mat4 P, glm::mat4 V) {
     // Załóżmy, że wskazówka minutowa przesuwa się o 1 obrót co 10 obrotów zębatki:
     float gearToMinuteHandRatio = 1.0f / 10.0f;
     float bigHandAngle = angle * gearToMinuteHandRatio;
@@ -130,17 +169,42 @@ void drawClock(float angle) {
     float smallHandAngle = angle * gearToHourHandRatio;
 
     glm::mat4 base = glm::rotate(glm::mat4(1.0f), PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));
+// HOUSE
+    glm::mat4 Mk1 = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+    Mk1 = glm::rotate(Mk1, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
+    
+    // Use textured shader
+    spTextured->use();
+    glUniformMatrix4fv(spTextured->u("P"), 1, false, glm::value_ptr(P));
+    glUniformMatrix4fv(spTextured->u("V"), 1, false, glm::value_ptr(V));
+    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk1));
 
-    // Korpus
-    glm::mat4 Mk1 = glm::scale(base, glm::vec3(1.0f));
-    glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(Mk1));
-    glUniform4f(spLambert->u("color"), 1, 0, 1, 1);
+    // Bind texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texClockHouse);
+    glUniform1i(spTextured->u("tex0"), 0);
+
+    glUniform1i(spTextured->u("textureIndex"), 0);
     Models::grannyClock.drawSolid();
 
-    // Tarcza
-    glUniform4f(spLambert->u("color"), 1, 1, 1, 1);
+// FACE
+    glm::mat4 Mk2 = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+    Mk2 = glm::rotate(Mk2, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
+
+    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk2));
+
+    // Bind texture
+    glBindTexture(GL_TEXTURE_2D, texClockFace);
+    glUniform1i(spTextured->u("tex"), 0);
+
     Models::grannyClockFace.drawSolid();
 
+// HAND1
+    glm::mat4 Mk3 = glm::mat4(1.0f);
+    Mk3 = glm::rotate(Mk3, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
+    Mk3 = glm::translate(Mk3, glm::vec3(-0.40f, 3.20f, 0.0f)); //(przod/tyl,gora/dol,prawo/lewo)
+
+//HAND2
     // WSKAZÓWKI – obroty wokół osi Z względem środka tarczy (na bazie macierzy bazowej)
 
    // Duża wskazówka (minutowa) – pełny obrót co 60s
@@ -148,8 +212,12 @@ void drawClock(float angle) {
     Mk3 = glm::translate(Mk3, glm::vec3(0.0f, 3.1f, 0.4f));  // Ustalenie punktu zaczepienia
     Mk3 = glm::rotate(Mk3, -bigHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
     Mk3 = glm::rotate(Mk3, PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));  // obrót w stronę widoku
-    glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(Mk3));
-    glUniform4f(spLambert->u("color"), 1, 0.5, 0.5, 1);
+    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk3));
+
+    // Bind texture
+    glBindTexture(GL_TEXTURE_2D, texClockHand);
+    glUniform1i(spTextured->u("tex"), 0);
+
     Models::grannyClockHand.drawSolid();
 
     // Mała wskazówka (godzinowa) – pełny obrót co 3600s
@@ -158,8 +226,13 @@ void drawClock(float angle) {
     Mk4 = glm::rotate(Mk4, -smallHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
     Mk4 = glm::rotate(Mk4, PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));
     Mk4 = glm::scale(Mk4, glm::vec3(0.7f));
-    glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(Mk4));
-    glUniform4f(spLambert->u("color"), 0.5, 0.5, 0.5, 1);
+
+    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk4));
+
+    // Bind texture
+    glBindTexture(GL_TEXTURE_2D, texClockHand);
+    glUniform1i(spTextured->u("tex"), 0);
+
     Models::grannyClockHand.drawSolid();
 
     // WAHADŁO – bujanie LEWO↔PRAWO sinusoidą co sekundę
@@ -167,8 +240,12 @@ void drawClock(float angle) {
     glm::mat4 pendulum = base;
     pendulum = glm::translate(pendulum, glm::vec3(-0.1f, 0.1f, 0.0f));
     pendulum = glm::rotate(pendulum, pendulumAngle, glm::vec3(1.0f, 0.0f, 0.0f));  // obrót wokół osi X
-    glUniformMatrix4fv(spLambert->u("M"), 1, false, glm::value_ptr(pendulum));
-    glUniform4f(spLambert->u("color"), 0.2, 0.7, 1, 1);
+    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(pendulum));
+
+    // Bind texture
+    glBindTexture(GL_TEXTURE_2D, texPendulum);
+    glUniform1i(spTextured->u("tex"), 0);
+
     Models::pendulum.drawSolid();
 }
 
@@ -178,17 +255,17 @@ void drawClock(float angle) {
 
 
 // Zębatki 2
-void gears2(float angle) {
+void gears2(float angle, glm::mat4 P, glm::mat4 V) {
     glm::mat4 I = glm::mat4(1.0f);
 
 
     glm::mat4 Mt1 = glm::translate(I, glm::vec3(-0.1575f, -0.1f, -0.05f));
     Mt1 = glm::rotate(Mt1, angle, glm::vec3(0.0f, 0.0f, 1.0f));
-    drawGear(Mt1);
+    drawGear(Mt1,P,V);
 
     glm::mat4 Mt2 = glm::translate(I, glm::vec3(0.1575f, -0.1f, -0.05f));
     Mt2 = glm::rotate(Mt2, -angle + glm::radians(25.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    drawGear(Mt2);
+    drawGear(Mt2,P,V);
 }
 
 // Rysowanie sceny
@@ -198,12 +275,9 @@ void drawScene(GLFWwindow* window, float angle) {
     glm::mat4 P = glm::perspective(glm::radians(50.0f), 1.0f, 1.0f, 50.0f);
     glm::mat4 V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
-    spLambert->use();
-    glUniformMatrix4fv(spLambert->u("P"), 1, false, glm::value_ptr(P));
-    glUniformMatrix4fv(spLambert->u("V"), 1, false, glm::value_ptr(V));
 
-    drawClock(angle);
-    gears2(angle);
+    drawClock(angle,P,V);
+    gears2(angle,P,V);
 
     glfwSwapBuffers(window);
 }
