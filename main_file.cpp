@@ -1,4 +1,4 @@
-﻿/*
+/*
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License...
 */
@@ -159,7 +159,16 @@ void drawGear(glm::mat4 Mt, glm::mat4 P, glm::mat4 V) {
 }
 
 // Rysowanie zegara
-void drawClock(glm::mat4 P, glm::mat4 V) {
+void drawClock(float angle, glm::mat4 P, glm::mat4 V) {
+    // Załóżmy, że wskazówka minutowa przesuwa się o 1 obrót co 10 obrotów zębatki:
+    float gearToMinuteHandRatio = 1.0f / 10.0f;
+    float bigHandAngle = angle * gearToMinuteHandRatio;
+
+    // A wskazówka godzinowa jeszcze wolniej
+    float gearToHourHandRatio = 1.0f / 600.0f;
+    float smallHandAngle = angle * gearToHourHandRatio;
+
+    glm::mat4 base = glm::rotate(glm::mat4(1.0f), PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));
 // HOUSE
     glm::mat4 Mk1 = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
     Mk1 = glm::rotate(Mk1, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -194,7 +203,15 @@ void drawClock(glm::mat4 P, glm::mat4 V) {
     glm::mat4 Mk3 = glm::mat4(1.0f);
     Mk3 = glm::rotate(Mk3, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
     Mk3 = glm::translate(Mk3, glm::vec3(-0.40f, 3.20f, 0.0f)); //(przod/tyl,gora/dol,prawo/lewo)
-    
+
+//HAND2
+    // WSKAZÓWKI – obroty wokół osi Z względem środka tarczy (na bazie macierzy bazowej)
+
+   // Duża wskazówka (minutowa) – pełny obrót co 60s
+    glm::mat4 Mk3 = glm::mat4(1.0f);
+    Mk3 = glm::translate(Mk3, glm::vec3(0.0f, 3.1f, 0.4f));  // Ustalenie punktu zaczepienia
+    Mk3 = glm::rotate(Mk3, -bigHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+    Mk3 = glm::rotate(Mk3, PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));  // obrót w stronę widoku
     glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk3));
 
     // Bind texture
@@ -203,10 +220,11 @@ void drawClock(glm::mat4 P, glm::mat4 V) {
 
     Models::grannyClockHand.drawSolid();
 
-//HAND2
+    // Mała wskazówka (godzinowa) – pełny obrót co 3600s
     glm::mat4 Mk4 = glm::mat4(1.0f);
-    Mk4 = glm::rotate(Mk4, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
-    Mk4 = glm::translate(Mk4, glm::vec3(-0.45f, 3.20f, 0.0f));
+    Mk4 = glm::translate(Mk4, glm::vec3(0.0f, 3.1f, 0.45f));
+    Mk4 = glm::rotate(Mk4, -smallHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+    Mk4 = glm::rotate(Mk4, PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));
     Mk4 = glm::scale(Mk4, glm::vec3(0.7f));
 
     glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk4));
@@ -217,11 +235,12 @@ void drawClock(glm::mat4 P, glm::mat4 V) {
 
     Models::grannyClockHand.drawSolid();
 
-    glm::mat4 Mk5 = glm::mat4(1.0f);
-    Mk5 = glm::rotate(Mk5, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
-    Mk5 = glm::translate(Mk5, glm::vec3(-0.1f, 0.1f, 0.0f));
-    
-    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk5));
+    // WAHADŁO – bujanie LEWO↔PRAWO sinusoidą co sekundę
+    float pendulumAngle = sin(glfwGetTime() * PI) * glm::radians(20.0f); // 20° w lewo/prawo
+    glm::mat4 pendulum = base;
+    pendulum = glm::translate(pendulum, glm::vec3(-0.1f, 0.1f, 0.0f));
+    pendulum = glm::rotate(pendulum, pendulumAngle, glm::vec3(1.0f, 0.0f, 0.0f));  // obrót wokół osi X
+    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(pendulum));
 
     // Bind texture
     glBindTexture(GL_TEXTURE_2D, texPendulum);
@@ -231,9 +250,14 @@ void drawClock(glm::mat4 P, glm::mat4 V) {
 }
 
 
+
+
+
+
 // Zębatki 2
 void gears2(float angle, glm::mat4 P, glm::mat4 V) {
     glm::mat4 I = glm::mat4(1.0f);
+
 
     glm::mat4 Mt1 = glm::translate(I, glm::vec3(-0.1575f, -0.1f, -0.05f));
     Mt1 = glm::rotate(Mt1, angle, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -252,8 +276,7 @@ void drawScene(GLFWwindow* window, float angle) {
     glm::mat4 V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
 
-
-    drawClock(P,V);
+    drawClock(angle,P,V);
     gears2(angle,P,V);
 
     glfwSwapBuffers(window);
