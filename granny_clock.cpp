@@ -80,7 +80,7 @@ namespace Models {
         vertices = new float[vertexCount * 4];
         normals = new float[vertexCount * 4];
         vertexNormals = new float[vertexCount * 4];
-        texCoords = new float[vertexCount * 4];
+        texCoords = new float[vertexCount * 2];
         colors = new float[vertexCount * 4];
 
         for (unsigned int i = 0; i < vertexCount; ++i) {
@@ -94,10 +94,8 @@ namespace Models {
                 vertexNormals[i * 4 + j] = (j < 3) ? n[j] : 0.0f;
             }
 
-            texCoords[i * 4 + 0] = t.x;
-            texCoords[i * 4 + 1] = t.y;
-            texCoords[i * 4 + 2] = 0.0f;
-            texCoords[i * 4 + 3] = 0.0f;
+            texCoords[i * 2 + 0] = t.x;
+            texCoords[i * 2 + 1] = t.y;
 
             colors[i * 4 + 0] = 1.0f;
             colors[i * 4 + 1] = 1.0f;

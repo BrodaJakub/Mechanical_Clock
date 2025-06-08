@@ -20,6 +20,8 @@ it under the terms of the GNU General Public License...
 #include "gearwheel.h"
 #include "granny_clock.h"  // Dodane
 
+ShaderProgram *sp;
+
 float speed = 0;
 GLuint texClockHouse;
 GLuint texClockHand;
@@ -101,26 +103,23 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
-GLuint readTexture(const char* filename) {
+GLuint readTexture(const char *filename)
+{ // global declaration
     GLuint tex;
     glActiveTexture(GL_TEXTURE0);
-
-    std::vector<unsigned char> image;
-    unsigned width, height;
+    // Read into computers memory
+    std::vector<unsigned char> image; // Allocate memory
+    unsigned width, height;           // Variables for image size
+    // Read the image
     unsigned error = lodepng::decode(image, width, height, filename);
-    if (error) {
-        std::cerr << "Texture loading error: " << lodepng_error_text(error) << std::endl;
-        return 0;
-    }
-
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, 4, width, height, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, image.data());
-
+    // Import to graphics card memory
+    glGenTextures(1, &tex);            // Initialize one handle
+    glBindTexture(GL_TEXTURE_2D, tex); // Activate handle
+    // Copy image to graphics cards memory reprezented by the active handle
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, (unsigned char *)image.data());
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
     return tex;
 }
 
@@ -133,6 +132,8 @@ void initOpenGLProgram(GLFWwindow* window) {
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+    sp=new ShaderProgram("v_simplest.glsl",NULL,"f_simplest.glsl");
+
     texClockHouse = readTexture("clock_house.png");
     texClockHand = readTexture("clock_hand.png");
     texClockFace = readTexture("clock_face.png");
@@ -141,7 +142,7 @@ void initOpenGLProgram(GLFWwindow* window) {
 
 // Zwolnienie zasobów
 void freeOpenGLProgram(GLFWwindow* window) {
-    freeShaders();
+    delete sp;
     glDeleteTextures(1, &texClockHouse);
     
 }
@@ -174,45 +175,92 @@ void drawClock(float angle, glm::mat4 P, glm::mat4 V) {
     Mk1 = glm::rotate(Mk1, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
     
     // Use textured shader
-    spTextured->use();
-    glUniformMatrix4fv(spTextured->u("P"), 1, false, glm::value_ptr(P));
-    glUniformMatrix4fv(spTextured->u("V"), 1, false, glm::value_ptr(V));
-    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk1));
+    sp->use();
+    glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
+    glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
+    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(Mk1));
 
-    // Bind texture
+    // Aktywacja tekstur
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texClockHouse);
-    glUniform1i(spTextured->u("tex0"), 0);
+    glUniform1i(sp->u("textureMap0"), 0);
 
-    glUniform1i(spTextured->u("textureIndex"), 0);
-    Models::grannyClock.drawSolid();
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texClockFace);
+    glUniform1i(sp->u("textureMap1"), 1);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, texClockHand);
+    glUniform1i(sp->u("textureMap2"), 2);
+
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, texPendulum);
+    glUniform1i(sp->u("textureMap3"), 3);
+
+    glEnableVertexAttribArray(sp->a("texCoord0"));
+    glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, Models::grannyClock.texCoords);
+    
+    glEnableVertexAttribArray(sp->a("vertex")); //Enable sending data to the attribute vertex
+    glVertexAttribPointer(sp->a("vertex"),4,GL_FLOAT,false,0,Models::grannyClock.vertices); //Specify source of the data for the attribute vertex
+
+	glEnableVertexAttribArray(sp->a("color")); //Enable sending data to the attribute color
+	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, Models::grannyClock.colors); //Specify source of the data for the attribute color
+
+	glEnableVertexAttribArray(sp->a("normal")); //Enable sending data to the attribute color
+	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, Models::grannyClock.normals); //Specify source of the data for the attribute normal
+
+    glUniform1i(sp->u("textureIndex"), 0); // użyj textureMap0
+
+    glDrawArrays(GL_TRIANGLES, 0, Models::grannyClock.vertexCount);
+    //Models::grannyClock.drawSolid();
 
 // FACE
     glm::mat4 Mk2 = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
     Mk2 = glm::rotate(Mk2, PI/2, glm::vec3(0.0f, 1.0f, 0.0f));
 
-    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk2));
+    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(Mk2));
 
-    // Bind texture
-    glBindTexture(GL_TEXTURE_2D, texClockFace);
-    glUniform1i(spTextured->u("tex"), 0);
+    glEnableVertexAttribArray(sp->a("texCoord0"));
+    glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, Models::grannyClockFace.texCoords);
+    
+    glEnableVertexAttribArray(sp->a("vertex")); //Enable sending data to the attribute vertex
+    glVertexAttribPointer(sp->a("vertex"),4,GL_FLOAT,false,0,Models::grannyClockFace.vertices); //Specify source of the data for the attribute vertex
 
-    Models::grannyClockFace.drawSolid();
+	glEnableVertexAttribArray(sp->a("color")); //Enable sending data to the attribute color
+	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, Models::grannyClockFace.colors); //Specify source of the data for the attribute color
 
-    // WSKAZÓWKI – obroty wokół osi Z względem środka tarczy (na bazie macierzy bazowej)
+	glEnableVertexAttribArray(sp->a("normal")); //Enable sending data to the attribute color
+	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, Models::grannyClockFace.normals); //Specify source of the data for the attribute normal
+
+    glUniform1i(sp->u("textureIndex"), 1); // użyj textureMap1
+
+    glDrawArrays(GL_TRIANGLES, 0, Models::grannyClockFace.vertexCount);
+
+//     // WSKAZÓWKI – obroty wokół osi Z względem środka tarczy (na bazie macierzy bazowej)
 
    // Duża wskazówka (minutowa) – pełny obrót co 60s
     glm::mat4 Mk3 = glm::mat4(1.0f);
     Mk3 = glm::translate(Mk3, glm::vec3(0.0f, 3.1f, 0.4f));  // Ustalenie punktu zaczepienia (przod/tyl,gora/dol,prawo/lewo)
     Mk3 = glm::rotate(Mk3, -bigHandAngle, glm::vec3(0.0f, 0.0f, 1.0f));
     Mk3 = glm::rotate(Mk3, PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));  // obrót w stronę widoku
-    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk3));
+    
+    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(Mk3));
 
-    // Bind texture
-    glBindTexture(GL_TEXTURE_2D, texClockHand);
-    glUniform1i(spTextured->u("tex"), 0);
+    glEnableVertexAttribArray(sp->a("texCoord0"));
+    glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, Models::grannyClockHand.texCoords);
+    
+    glEnableVertexAttribArray(sp->a("vertex")); //Enable sending data to the attribute vertex
+    glVertexAttribPointer(sp->a("vertex"),4,GL_FLOAT,false,0,Models::grannyClockHand.vertices); //Specify source of the data for the attribute vertex
 
-    Models::grannyClockHand.drawSolid();
+	glEnableVertexAttribArray(sp->a("color")); //Enable sending data to the attribute color
+	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, Models::grannyClockHand.colors); //Specify source of the data for the attribute color
+
+	glEnableVertexAttribArray(sp->a("normal")); //Enable sending data to the attribute color
+	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, Models::grannyClockHand.normals); //Specify source of the data for the attribute normal
+
+    glUniform1i(sp->u("textureIndex"), 2); // użyj textureMap2
+
+    glDrawArrays(GL_TRIANGLES, 0, Models::grannyClockHand.vertexCount);
 
     // Mała wskazówka (godzinowa) – pełny obrót co 3600s
     glm::mat4 Mk4 = glm::mat4(1.0f);
@@ -221,26 +269,32 @@ void drawClock(float angle, glm::mat4 P, glm::mat4 V) {
     Mk4 = glm::rotate(Mk4, PI / 2, glm::vec3(0.0f, 1.0f, 0.0f));
     Mk4 = glm::scale(Mk4, glm::vec3(0.7f));
 
-    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(Mk4));
+    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(Mk4));
 
-    // Bind texture
-    glBindTexture(GL_TEXTURE_2D, texClockHand);
-    glUniform1i(spTextured->u("tex"), 0);
-
-    Models::grannyClockHand.drawSolid();
+    glDrawArrays(GL_TRIANGLES, 0, Models::grannyClockHand.vertexCount);
 
     // WAHADŁO – bujanie LEWO↔PRAWO sinusoidą co sekundę
     float pendulumAngle = sin(glfwGetTime() * PI) * glm::radians(20.0f); // 20° w lewo/prawo
     glm::mat4 pendulum = base;
     pendulum = glm::translate(pendulum, glm::vec3(-0.1f, 0.1f, 0.0f));
     pendulum = glm::rotate(pendulum, pendulumAngle, glm::vec3(1.0f, 0.0f, 0.0f));  // obrót wokół osi X
-    glUniformMatrix4fv(spTextured->u("M"), 1, false, glm::value_ptr(pendulum));
+    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(pendulum));
 
-    // Bind texture
-    glBindTexture(GL_TEXTURE_2D, texPendulum);
-    glUniform1i(spTextured->u("tex"), 0);
+    glEnableVertexAttribArray(sp->a("texCoord0"));
+    glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, Models::pendulum.texCoords);
+    
+    glEnableVertexAttribArray(sp->a("vertex")); //Enable sending data to the attribute vertex
+    glVertexAttribPointer(sp->a("vertex"),4,GL_FLOAT,false,0,Models::pendulum.vertices); //Specify source of the data for the attribute vertex
 
-    Models::pendulum.drawSolid();
+	glEnableVertexAttribArray(sp->a("color")); //Enable sending data to the attribute color
+	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, Models::pendulum.colors); //Specify source of the data for the attribute color
+
+	glEnableVertexAttribArray(sp->a("normal")); //Enable sending data to the attribute color
+	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, Models::pendulum.normals); //Specify source of the data for the attribute normal
+
+    glUniform1i(sp->u("textureIndex"), 3); // użyj textureMap2
+
+    glDrawArrays(GL_TRIANGLES, 0, Models::pendulum.vertexCount);
 }
 
 
