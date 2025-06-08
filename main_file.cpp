@@ -244,10 +244,6 @@ void drawClock(float angle, glm::mat4 P, glm::mat4 V) {
 }
 
 
-
-
-
-
 // Zębatki 2
 void gears2(float angle, glm::mat4 P, glm::mat4 V) {
     glm::mat4 I = glm::mat4(1.0f);
