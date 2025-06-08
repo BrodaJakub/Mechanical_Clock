@@ -144,6 +144,9 @@ void initOpenGLProgram(GLFWwindow* window) {
 void freeOpenGLProgram(GLFWwindow* window) {
     delete sp;
     glDeleteTextures(1, &texClockHouse);
+    glDeleteTextures(1, &texClockHand);
+    glDeleteTextures(1, &texClockFace);
+    glDeleteTextures(1, &texPendulum);
     
 }
 
@@ -220,16 +223,9 @@ void drawClock(float angle, glm::mat4 P, glm::mat4 V) {
 
     glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(Mk2));
 
-    glEnableVertexAttribArray(sp->a("texCoord0"));
     glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, Models::grannyClockFace.texCoords);
-    
-    glEnableVertexAttribArray(sp->a("vertex")); //Enable sending data to the attribute vertex
     glVertexAttribPointer(sp->a("vertex"),4,GL_FLOAT,false,0,Models::grannyClockFace.vertices); //Specify source of the data for the attribute vertex
-
-	glEnableVertexAttribArray(sp->a("color")); //Enable sending data to the attribute color
 	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, Models::grannyClockFace.colors); //Specify source of the data for the attribute color
-
-	glEnableVertexAttribArray(sp->a("normal")); //Enable sending data to the attribute color
 	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, Models::grannyClockFace.normals); //Specify source of the data for the attribute normal
 
     glUniform1i(sp->u("textureIndex"), 1); // użyj textureMap1
@@ -246,16 +242,9 @@ void drawClock(float angle, glm::mat4 P, glm::mat4 V) {
     
     glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(Mk3));
 
-    glEnableVertexAttribArray(sp->a("texCoord0"));
     glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, Models::grannyClockHand.texCoords);
-    
-    glEnableVertexAttribArray(sp->a("vertex")); //Enable sending data to the attribute vertex
     glVertexAttribPointer(sp->a("vertex"),4,GL_FLOAT,false,0,Models::grannyClockHand.vertices); //Specify source of the data for the attribute vertex
-
-	glEnableVertexAttribArray(sp->a("color")); //Enable sending data to the attribute color
 	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, Models::grannyClockHand.colors); //Specify source of the data for the attribute color
-
-	glEnableVertexAttribArray(sp->a("normal")); //Enable sending data to the attribute color
 	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, Models::grannyClockHand.normals); //Specify source of the data for the attribute normal
 
     glUniform1i(sp->u("textureIndex"), 2); // użyj textureMap2
@@ -280,21 +269,19 @@ void drawClock(float angle, glm::mat4 P, glm::mat4 V) {
     pendulum = glm::rotate(pendulum, pendulumAngle, glm::vec3(1.0f, 0.0f, 0.0f));  // obrót wokół osi X
     glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(pendulum));
 
-    glEnableVertexAttribArray(sp->a("texCoord0"));
     glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, Models::pendulum.texCoords);
-    
-    glEnableVertexAttribArray(sp->a("vertex")); //Enable sending data to the attribute vertex
     glVertexAttribPointer(sp->a("vertex"),4,GL_FLOAT,false,0,Models::pendulum.vertices); //Specify source of the data for the attribute vertex
-
-	glEnableVertexAttribArray(sp->a("color")); //Enable sending data to the attribute color
 	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, Models::pendulum.colors); //Specify source of the data for the attribute color
-
-	glEnableVertexAttribArray(sp->a("normal")); //Enable sending data to the attribute color
 	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, Models::pendulum.normals); //Specify source of the data for the attribute normal
 
-    glUniform1i(sp->u("textureIndex"), 3); // użyj textureMap2
+    glUniform1i(sp->u("textureIndex"), 3); // użyj textureMap3
 
     glDrawArrays(GL_TRIANGLES, 0, Models::pendulum.vertexCount);
+
+    glDisableVertexAttribArray(sp->a("texCoord0"));
+    glDisableVertexAttribArray(sp->a("vertex"));
+    glDisableVertexAttribArray(sp->a("color"));
+    glDisableVertexAttribArray(sp->a("normal"));
 }
 
 
@@ -336,7 +323,7 @@ int main(void) {
         exit(EXIT_FAILURE);
     }
 
-    window = glfwCreateWindow(500, 500, "OpenGL", NULL, NULL);
+    window = glfwCreateWindow(800, 800, "OpenGL", NULL, NULL);
     if (!window) {
         glfwTerminate();
         exit(EXIT_FAILURE);
